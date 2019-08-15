@@ -1,23 +1,21 @@
 #pragma once
 
-#include <iostream>  //TODO remove
+#include <cassert>
+#include <functional>
 
 #include "Message.h"
 
 namespace check {
 
 struct Boolean {
-    explicit constexpr Boolean(bool c, ErrorType errorType = ErrorType::Unknown)
-        : condition(c), errorType{errorType} {}
+    explicit constexpr Boolean(bool c) : condition(c) {}
     explicit constexpr operator bool() const { return condition; }
     const bool condition;
-    const ErrorType errorType;
 };
 
 template<typename T, template<typename C> class Cmp>
 struct BinaryCheck : Boolean {
-    BinaryCheck(const T& l, const T& r, ErrorType errorType = ErrorType::Unknown)
-        : Boolean{Cmp<T>{}(l, r), errorType}, l{l}, r{r} {}
+    explicit BinaryCheck(const T& l, const T& r) : Boolean{Cmp<T>{}(l, r)}, l{l}, r{r} {}
     const T l;
     const T r;
 };
@@ -40,29 +38,53 @@ using LessEqual = BinaryCheck<T, std::less_equal>;
 template<typename T>
 using GreaterEqual = BinaryCheck<T, std::greater_equal>;
 
-}  // namespace check
 
-// TODO remove
-auto stdCout = [](std::string s) { std::cout << "[Output Consumers output]:\n" << s << std::endl; };
+class Output {
+public:
+    Output& operator=(const Message& msg);
+};
+
+
+
+///
+/// \brief The MsgHandler class allow to register handler for Message create when check is invalid
+///
+class MsgHandler {
+public:
+    using Handler = std::function<void(const Message& msg)>;
+    static void reset(Handler h = {});
+    static void handle(const Message& msg);
+private:
+    static std::function<void(const Message& msg)> msgHandler;
+};
+
+
+
+}  // namespace check
 
 #define CHECK(errorType, b)                                                                        \
     if (check::Boolean c = check::Boolean(b))                                                      \
         ;                                                                                          \
     else                                                                                           \
-        check::Message{errorType, #b} << '\n'
+        check::Output{} = check::Message{errorType, #b} << '\n'
 
-#define CHECK_EQ(errorType, a, b)                                                                  \
-    if (check::Equal<decltype(a)> c = check::Equal<decltype(a)>(a, b))                             \
+#define BINARY_CHECK(errorType, a, b, CMP, CMP_MSG)                                                \
+    if (check::CMP<decltype(a)> c = check::CMP<decltype(a)>(a, b))                                 \
         ;                                                                                          \
     else                                                                                           \
-        check::Message{errorType, stdCout, #a, " is not equal to ", #b}                            \
-            << "\nvalue of " << #a << " is [" << c.r << "]\nvalue of " << #b << " is [" << c.l     \
-            << "]\n"
+        check::Output{} = check::Message{errorType, #a, CMP_MSG, #b}                               \
+                          << "\nvalue of " << #a << " is [" << c.r << "]\nvalue of " << #b         \
+                          << " is [" << c.l << "]\n"
 
-#define CHECK_LT(errorType, a, b)                                                                  \
-    if (check::Less<decltype(a)> c = check::Less<decltype(a)>(a, b))                               \
-        ;                                                                                          \
-    else                                                                                           \
-        check::Message{errorType, #a, " is not less than ", #b}                                    \
-            << "\nvalue of " << #a << " is [" << c.r << "]\nvalue of " << #b << " is [" << c.l     \
-            << "]\n"
+#define CHECK_EQ(errorType, a, b) BINARY_CHECK(errorType, a, b, Equal, " is equal to ")
+
+#define CHECK_NE(errorType, a, b) BINARY_CHECK(errorType, a, b, NotEqual, " is not equal to ")
+
+#define CHECK_LT(errorType, a, b) BINARY_CHECK(errorType, a, b, Less, " is less than ")
+
+#define CHECK_GT(errorType, a, b) BINARY_CHECK(errorType, a, b, Greater, " is greater than ")
+
+#define CHECK_LE(errorType, a, b) BINARY_CHECK(errorType, a, b, LessEqual, " is less or equal to ")
+
+#define CHECK_GE(errorType, a, b)                                                                  \
+    BINARY_CHECK(errorType, a, b, GreaterEqual, " is greater or equal to ")

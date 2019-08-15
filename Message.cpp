@@ -4,16 +4,16 @@
 #include <iostream>
 
 namespace check {
-Message::~Message() try {
-    oss << "\n+=====================+\n";
-    if (!handleOutput) {
-        std::cout << msg() << std::endl;
-    } else {
-        handleOutput(msg());
+
+std::ostream& operator<<(std::ostream& os, ErrorType e) {
+    switch (e) {
+        default:
+        case ErrorType::Unknown: return os << "Unknown";
+        case ErrorType::HW: return os << "HW";
+        case ErrorType::Performance: return os << "Performance";
+        case ErrorType::Other: return os << "Other";
     }
-} catch (...) {
-    // any better idea how to manage error handling ?
-    std::exit(-1);
 }
+
 
 }  // namespace check

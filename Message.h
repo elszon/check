@@ -1,9 +1,7 @@
 #pragma once
 
-#include <functional>
 #include <sstream>
 #include <string>
-#include <vector>
 
 namespace check {
 
@@ -14,28 +12,17 @@ enum class ErrorType {
     Other = 1 << 3,
 };
 
+std::ostream& operator<<(std::ostream& os, ErrorType e);
+
 class Message final {
 public:
-    using HandleOutputFun = std::function<void(std::string msg)>;
-
     template<typename... Args>
     Message(ErrorType errorType, const Args&... args) : errorType{errorType} {
-        oss << "Is not valid: [ ";
+        oss << "Is not true: [ ";
         const auto fold = {(oss << args, 0)...};
         (void)fold;
         oss << " ] ";
     }
-
-    template<typename... Args>
-    Message(ErrorType errorType, HandleOutputFun handleOutput, const Args&... args)
-        : errorType{errorType}, handleOutput{handleOutput} {
-        oss << "Is not valid: [ ";
-        const auto fold = {(oss << args, 0)...};
-        (void)fold;
-        oss << " ] ";
-    }
-
-    ~Message();
 
     template<typename T>
     Message& operator<<(const T& t) {
@@ -44,11 +31,11 @@ public:
     }
 
     std::string msg() const { return oss.str(); }
+    ErrorType error() const { return errorType; }
 
 private:
     const ErrorType errorType;
     std::ostringstream oss;
-    HandleOutputFun handleOutput;
 };
 
 }  // namespace check
