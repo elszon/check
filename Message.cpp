@@ -6,13 +6,10 @@
 namespace check {
 Message::~Message() try {
     oss << "\n+=====================+\n";
-    if (outputConsumers.empty()) {
+    if (!handleOutput) {
         std::cout << msg() << std::endl;
     } else {
-        const auto& msgStr = msg();
-        for (auto&& output : outputConsumers) {
-            output(msgStr);
-        }
+        handleOutput(msg());
     }
 } catch (...) {
     // any better idea how to manage error handling ?

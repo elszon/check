@@ -6,13 +6,20 @@
 #include <vector>
 
 namespace check {
-class Message {
+
+enum class ErrorType {
+    Unknown = 1 << 0,
+    HW = 1 << 1,
+    Performance = 1 << 2,
+    Other = 1 << 3,
+};
+
+class Message final {
 public:
-    using OutputFun = std::function<void(const std::string& msg)>;
-    using OutputConsumers = std::vector<OutputFun>;
+    using HandleOutputFun = std::function<void(std::string msg)>;
 
     template<typename... Args>
-    Message(const Args&... args) {
+    Message(ErrorType errorType, const Args&... args) : errorType{errorType} {
         oss << "Is not valid: [ ";
         const auto fold = {(oss << args, 0)...};
         (void)fold;
@@ -20,8 +27,8 @@ public:
     }
 
     template<typename... Args>
-    Message(OutputConsumers outputConsumers, const Args&... args)
-        : outputConsumers{outputConsumers} {
+    Message(ErrorType errorType, HandleOutputFun handleOutput, const Args&... args)
+        : errorType{errorType}, handleOutput{handleOutput} {
         oss << "Is not valid: [ ";
         const auto fold = {(oss << args, 0)...};
         (void)fold;
@@ -39,8 +46,9 @@ public:
     std::string msg() const { return oss.str(); }
 
 private:
+    const ErrorType errorType;
     std::ostringstream oss;
-    OutputConsumers outputConsumers;
+    HandleOutputFun handleOutput;
 };
 
 }  // namespace check
